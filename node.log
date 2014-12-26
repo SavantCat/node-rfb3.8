@@ -1,0 +1,6 @@
+client-> connected to server
+connected
+client-> RFB 003.008
+
+client-> , <Buffer 02 02 10>
+^C
