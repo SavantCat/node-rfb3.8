@@ -1,6 +1,28 @@
 client-> connected to server
 connected
-client-> RFB 003.008
-
-client-> , <Buffer 02 02 10>
+[0]Message -> 'RFB 003.008\n'
+[1]Message -> '\u0002\u0002\u0010'
+[2]Message -> '��ny�"�z\u000e���\u0019F�r'
+Password : 8:<Buffer 73 61 76 61 6e 74> [Shift]-> <Buffer ce 86 6e 86 76 2e 00 00>
+challenge:16:<Buffer b7 ff 6e 79 99 22 94 7a 0e b1 c1 de 19 46 8b 72>
+DES      :16:<Buffer 1b 62 4a 0f a6 c5 b9 cd 8e 9b b3 de 0c 35 d0 b6>
+[3]Message -> '\u0000\u0000\u0000\u0000'
+[4]Message -> '\u0001�\u0001�\u0010\u0010\u0000\u0001\u0000\u001f\u0000?\u0000\u001f\u000b\u0005\u0000\u0000\u0000\u0000\u0000\u0000\u0000(savant\'s X desktop (savant-VirtualBox:2)'
+<Buffer 01 f4 01 f4 10 10 00 01 00 1f 00 3f 00 1f 0b 05 00 00 00 00 00 00 00 28 73 61 76 61 6e 74 27 73 20 58 20 64 65 73 6b 74 6f 70 20 28 73 61 76 61 6e 74 2d ...>
+{ width: 500,
+  height: 500,
+  pixel_format: 
+   { bits_per_pixel: 16,
+     depth: 16,
+     big_endian_flag: 0,
+     true_colour_flag: 1,
+     red_max: 31,
+     green_max: 63,
+     blue_max: 31,
+     red_shift: 11,
+     green_shift: 5,
+     blue_shift: 0 },
+  name_size: 40,
+  name: 'savant\'s X desktop (savant-VirtualBox:2)' }
+<Buffer 00 00 00 00 10 10 00 01 00 00 00 0b 05 00 00 00 00 00 00 00>
 ^C
