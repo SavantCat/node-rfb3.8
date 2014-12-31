@@ -1,13 +1,13 @@
 var util = require('util');
 var crypto = require('crypto');
-
+//var png = require('./node_modules/png/build/Release/png');
 //var ciphers = crypto.getCiphers();
 //console.log(ciphers);
 
 var options = {
         host:'192.168.56.101',
         port:'5902'
-    };
+};
  
 var password = 'savant';
  
@@ -125,7 +125,6 @@ client.connect(options, function(){
  
 client.on('connect', function(){
   console.log('connected');
-  
 });
 
 var mode = 0;
@@ -133,8 +132,11 @@ var buf;
 
 var vncserver = {};
 var pixel_data;
+
+
+
 client.on('data', function(data){
-   console.log("["+mode+"]Message -> "+data.length);
+   console.log("["+mode+"]Message -> "+data.length+':',data);
     switch(mode){
         case 0:
                 if (data.toString() == 'RFB 003.008\n') {
@@ -198,39 +200,42 @@ client.on('data', function(data){
                 buf.writeUInt8(vncserver.pixel_format.bits_per_pixel,4);
                 buf.writeUInt8(vncserver.pixel_format.depth,5);
                 buf.writeUInt8(vncserver.pixel_format.big_endian_flag,6);
-                buf.writeUInt8(1,7);
                 
-                buf.writeUInt16BE(vncserver.pixel_format.red_max,8);
-                buf.writeUInt16BE(vncserver.pixel_format.green_max,10);
-                buf.writeUInt16BE(vncserver.pixel_format.blue_max,12);
+                vncserver.pixel_format.true_colour_flag = 0;
                 
-                buf.writeUInt8(vncserver.pixel_format.red_shift,13);
-                buf.writeUInt8(vncserver.pixel_format.green_shift,14);
-                buf.writeUInt8(vncserver.pixel_format.blue_shift,15);               
+                buf.writeUInt8(vncserver.pixel_format.true_colour_flag,7);
                 
-                buf.writeUInt8(0x0,16);
+                buf.writeUInt16BE(vncserver.pixel_format.red_max,8);//8-10
+                buf.writeUInt16BE(vncserver.pixel_format.green_max,10);//10-12
+                buf.writeUInt16BE(vncserver.pixel_format.blue_max,12);//12-14
+                
+                buf.writeUInt8(vncserver.pixel_format.red_shift,14);
+                buf.writeUInt8(vncserver.pixel_format.green_shift,15);
+                buf.writeUInt8(vncserver.pixel_format.blue_shift,16);               
+                
                 buf.writeUInt8(0x0,17);
+                buf.writeUInt8(0x0,18);
                 buf.writeUInt8(0x0,19);
                 
                 client.write(buf);
                 console.log('SetPixelFormat:',buf);
-
+/*
                 var buf = new Buffer(8);// SetEncodings
                 buf.writeUInt8(2,0);
-                buf.writeUInt8(0x0,1);
-                buf.writeUInt16LE(1,2);
-                buf.writeInt32LE(0,3)        
+                buf.writeUInt8(0,1);
+                buf.writeUInt16BE(0,2);
+                buf.writeInt32LE(0,4);       
                 
                 client.write(buf);
                 console.log('SetEncodings:',buf);
-                
+*/
                 var buf = new Buffer(10);//FramebufferUpdateRequest
                 buf.writeUInt8(3,0);
                 buf.writeUInt8(0,1);
-                buf.writeUInt16LE(0,2);
-                buf.writeUInt16LE(0,4);
-                buf.writeUInt16LE(vncserver.width,6);
-                buf.writeUInt16LE(vncserver.height,8);
+                buf.writeUInt16BE(100,2);
+                buf.writeUInt16BE(0,4);
+                buf.writeUInt16BE(vncserver.width,6);
+                buf.writeUInt16BE(vncserver.height,8);
                 
                 client.write(buf);
                 console.log('FramebufferUpdateRequest:',buf);
@@ -238,12 +243,26 @@ client.on('data', function(data){
                 mode++;
                 break;
         case 5:
-                if (data[0] == 0) {
-                        mode = 6;
-                        bufs = [];
+                
+                
+                switch (data[0]) {
+                        case 0:
+                                mode = 6;
+                                bufs = [];
+                                break;
+                        case 1:
+                                mode = 7;
+                                bufs = [];
+                                break;
                 }
+
                 break;
         case 6:
+                bufs.push(data);
+                pixel_data = Buffer.concat(bufs, bufs.totalLength);
+                console.log(pixel_data.length);
+                break;
+        case 7:
                 bufs.push(data);
                 pixel_data = Buffer.concat(bufs, bufs.totalLength);
                 console.log(pixel_data.length);
@@ -252,7 +271,8 @@ client.on('data', function(data){
 });
 
 client.on('error', function(data){
-  console.log('error-> ' + data);
+
+               
 });
 
 client.on('end', function(){
