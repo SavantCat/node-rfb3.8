@@ -1,6 +1,6 @@
 var net = require('net');
 var EventEmitter = require('events').EventEmitter;
-var des = require('vnc_des-ecb');
+var des = require('./lib/vnc_des-ecb.js');
 
 var rfb = function(){
     //イベント
@@ -32,19 +32,12 @@ var rfb = function(){
     //バッファデータ
     this.BufList = [];
     //レクトデータ
-    this.rect = {
-        number_of_rectangles:0,
-        number_of_colours:0,
-        first_colour:0,
-        buf:[]
-    }
+    this.rect = {};
 };
 
 rfb.prototype.connect = function(ipadress,port_number,password){
     var self = this;
-    
 
-    
     self.client.connect({host:ipadress,port:port_number}, function(){
         console.log('client -> Connect to vncserver');
     });
@@ -99,23 +92,53 @@ rfb.prototype.connect = function(ipadress,port_number,password){
 
                 break;
             case 5://メインセクション
+                console.log(data);
                 if (data.slice( 0, 1).readUInt8(0) == 0) {
+                    self.mode = 6;
+                    console.log('FramebufferUpdate');
                     self.rect.number_of_rectangles = data.slice( 2, 4).readUInt16BE(0);
                     self.BufList = [];
-                    self.client.setTimeout(100);
-                    self.mode = 6;
+                    self.BufferSize = 0;
                 }
                 if (data.slice( 0, 1).readUInt8(0) == 1) {
+                    self.mode = 7;
                     console.log('SetColourMapEntries');
+                    //console.log(data);
                     self.rect.first_colour      = data.slice( 3, 5).readUInt16BE(0);
                     self.rect.number_of_colours = data.slice( 5, 7).readUInt16BE(0);
-                    self.BufList = [data];
+                    self.BufList = [];
+                    self.BufferSize = 0;
                     self.client.setTimeout(100);
-                    self.mode = 6;
                 }
                 break;
             case 6:
+                self.rect.x_position    = data.slice( 0,2).readUInt16BE(0);
+                self.rect.y_position    = data.slice( 2,4).readUInt16BE(0);
+                self.rect.width         = data.slice( 4,6).readUInt16BE(0);
+                self.rect.height        = data.slice( 6,8).readUInt16BE(0);
+                self.rect.encoding_type = data.slice( 8,12).readInt32BE(0);
+                
+                var buf = data.slice(12);
+                self.BufferSize += buf.length;
+                self.BufList.push(buf);
+                self.mode = 8;
+                break;
+            case 7:
+                self.BufferSize += data.length;
                 self.BufList.push(data);
+                //console.log(self.BufferSize);
+                if (self.BufferSize == self.rect.width*self.rect.height*4) {
+                    console.log(self.BufferSize);
+                    self.events.emit('encode');
+                }
+                break;
+            case 8:
+                self.BufferSize += data.length;
+                self.BufList.push(data);
+                if (self.BufferSize == self.rect.width*self.rect.height*4) {
+                    //console.log(self.BufferSize);
+                    self.events.emit('encode');
+                }
                 break;
             case -1:
                 console('Error:'+data.slice(4).toString());
@@ -123,6 +146,20 @@ rfb.prototype.connect = function(ipadress,port_number,password){
                 break;
         }
     });
+    
+    self.events.on('encode', function(){
+        self.mode = 5;
+        var buf = Buffer.concat(self.BufList, self.BufList.totalLength);
+        //console.log(buf);
+        self.rect.data = new Buffer(self.rect.width*self.rect.height*3);
+        for(var i=0;i<self.rect.width*self.rect.height;i++){
+            self.rect.data[3*i  ] = buf[4*i  ];
+            self.rect.data[3*i+1] = buf[4*i+1];
+            self.rect.data[3*i+2] = buf[4*i+2];
+        }
+        self.events.emit('data',self.rect);
+    });
+    
     self.client.on('error', function(data){
         console.log(''+data);
     });
@@ -133,17 +170,18 @@ rfb.prototype.connect = function(ipadress,port_number,password){
         console.log('client-> connection is closed');
     });
     self.client.on('timeout',function(){
+        console.log('timeout');
         switch (self.mode) {
-            case 6:
+            case 7:
                 self.mode = 5;
                 self.rect.buf = Buffer.concat(self.BufList, self.BufList.totalLength);
-                self.events.emit('data',self.rect.buf);
                 break;
             default:
                 console.log('client -> Timeout');
                 self.client.end();
         }
     });
+    
 };
 
 rfb.prototype.SetPixelFormat = function(){
