@@ -92,23 +92,44 @@ rfb.prototype.connect = function(ipadress,port_number,password){
 
                 break;
             case 5://メインセクション
-                console.log(data);
-                if (data.slice( 0, 1).readUInt8(0) == 0) {
-                    self.mode = 6;
-                    console.log('FramebufferUpdate');
-                    self.rect.number_of_rectangles = data.slice( 2, 4).readUInt16BE(0);
-                    self.BufList = [];
-                    self.BufferSize = 0;
-                }
-                if (data.slice( 0, 1).readUInt8(0) == 1) {
-                    self.mode = 7;
-                    console.log('SetColourMapEntries');
-                    //console.log(data);
-                    self.rect.first_colour      = data.slice( 3, 5).readUInt16BE(0);
-                    self.rect.number_of_colours = data.slice( 5, 7).readUInt16BE(0);
-                    self.BufList = [];
-                    self.BufferSize = 0;
-                    self.client.setTimeout(100);
+                //console.log(data.length+'main:',data);
+                switch (data.slice( 0, 1).readUInt8(0)) {
+                    case 0:
+                        //console.log('FramebufferUpdate');
+                        self.rect.number_of_rectangles = data.slice( 2, 4).readUInt16BE(0);
+                        self.BufferSize = 0;
+                        self.BufList = [];
+                        if (data.length<=4) {
+                            self.mode = 6;
+                        }else{
+                            var buf = data.slice(4);
+                            self.rect.x_position    = buf.slice( 0,2).readUInt16BE(0);
+                            self.rect.y_position    = buf.slice( 2,4).readUInt16BE(0);
+                            self.rect.width         = buf.slice( 4,6).readUInt16BE(0);
+                            self.rect.height        = buf.slice( 6,8).readUInt16BE(0);
+                            self.rect.encoding_type = buf.slice( 8,12).readInt32BE(0);
+                            buf = buf.slice(12);
+                            self.BufferSize += buf.length;
+                            self.BufList.push(buf);
+                            self.mode = 8;
+                        }
+                        break;
+                    case 1:
+                        self.mode = 7;
+                        console.log('SetColourMapEntries');
+                        //console.log(data);
+                        self.rect.first_colour      = data.slice( 3, 5).readUInt16BE(0);
+                        self.rect.number_of_colours = data.slice( 5, 7).readUInt16BE(0);
+                        self.BufList = [];
+                        self.BufferSize = 0;
+                        self.client.setTimeout(100);
+                        break;
+                    case 2:
+                        console.log("Bell!");
+                        break;
+                    case 3:
+                        console.log("ServerCutText");
+                        break;
                 }
                 break;
             case 6:
@@ -242,7 +263,26 @@ rfb.prototype.FramebufferUpdateRequest = function(i,x,y,w,h){
     buf.writeUInt16BE(h,8);//height
    
     //console.log(buf);
-    this.client.write(buf);   
+    this.client.write(buf);
+}
+
+rfb.prototype.KeyEvent = function(down,key){
+    var buf = new Buffer(8);
+    buf.writeUInt8(4,0);   //message-type
+    buf.writeUInt8(down,1);//down-flag  
+    buf.writeUInt16BE(0,3);//padding
+    buf.writeUInt32BE(0,4);//key
+    this.client.write(buf);
+}
+
+rfb.prototype.PointerEvent = function(mask,x,y){
+    var buf = new Buffer(6);
+    buf.writeUInt8(5,0);   //message-type
+    buf.writeUInt8(mask,1);//button-mask
+    buf.writeUInt16LE(x,2);//x-position
+    buf.writeUInt16LE(y,4);//y-position
+    console.log(buf);
+    this.client.write(buf);
 }
 
 function ReceiveVncServerInfo(info,data) {

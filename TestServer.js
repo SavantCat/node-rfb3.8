@@ -1,13 +1,13 @@
 var rfb = require('./rfb3.8.js');
-var png = require('Node-ImageGenerator').png;
-var jpg = require('Node-ImageGenerator').jpg;
-
+var png = require('node-image-to-buffer').png;
+var jpg = require('node-image-to-buffer').jpg;
+var fs = require('fs');
 var r = new rfb();
 
 var password = 'savant';
 
 r.connect('192.168.56.101','5902',password);
-
+var x = 0;
 r.events.on('connected',function(data){
     console.log('client -> Authentication success');
     console.log(data);
@@ -22,7 +22,9 @@ r.events.on('connected',function(data){
     r.FramebufferUpdateRequest(1,0,0,r.info.width,r.info.height);
     setInterval(function(){
         r.FramebufferUpdateRequest(0,0,0,r.info.width,r.info.height);
-    },500);
+        //r.PointerEvent(0,x,x);
+        //console.log(x);
+    },200);
 });
 
 r.events.on('data',function(rect){
@@ -30,12 +32,12 @@ r.events.on('data',function(rect){
     //png.ToFile(rect.width,rect.height,'view.png',rect.data);
     //var buf = jpg.ToBuffer(rect.width,rect.height,3,50,rect.data);
     var buf = png.ToBuffer(rect.width,rect.height,rect.data);
-    var fs = require('fs');
+    
     fs.writeFile('view.png', buf , function (err) {
 
     });
     //var buf = png.ToBuffer(rect.width,rect.height,rect.data);
-    //console.log(buf);
+    console.log(x++,buf);
     //jpg.ToFile(rect.width,rect.height,3,50,'view.jpg',rect.data); 
 });
 
